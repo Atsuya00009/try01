@@ -423,7 +423,7 @@ function renderQuestion(){
       .toLowerCase();
   }
 
-  function checkAnswer(){
+    function checkAnswer(){
     if(session.checked) return;
     const ua = getUserAnswer();
     if(ua==null || (Array.isArray(ua) && ua.length===0)){
@@ -441,7 +441,9 @@ function renderQuestion(){
 
     if(q.形式==='truefalse' || q.形式==='mcq'){
       Array.from(box.querySelectorAll('.opt')).forEach(lab=>{
-        const val = lab.querySelector('input').value;
+        const inputEl = lab.querySelector('input');
+        if(!inputEl) return;
+        const val = inputEl.value;
         lab.classList.remove('correct','incorrect');
         if(val===q.答え) lab.classList.add('correct');
         if(val===ua && ua!==q.答え) lab.classList.add('incorrect');
@@ -456,25 +458,41 @@ function renderQuestion(){
     if(correct){ session.correct++; } else { session.wrong++; addWrong(q.id); }
     setStats();
 
+    // === 解説は必ず表示（未登録でもメッセージ） ===
     explain.style.display='block';
-    let html = '';
+    let htmlExp = '';
     if(!correct){
-      html += `<div><b>あなたの答え：</b> ${Array.isArray(ua)? ua.join(' → ') : (ua||'(未入力)')}</div>`;
+      htmlExp += `<div style="margin-bottom:6px"><b>あなたの答え：</b> ${Array.isArray(ua)? ua.join(' → ') : (ua||'(未入力)')}</div>`;
     }
-    html += `<div><b>正解：</b> ${Array.isArray(q.答え)? q.答え.join(' → ') : q.答え}</div>`;
-    if(q.解説){ html += `<div style="margin-top:6px"><b>解説：</b> ${q.解説}</div>`; }
-    if(els.showLaw.checked && q.根拠 && q.根拠.法令ID){
+    htmlExp += `<div style="margin-bottom:6px"><b>正解：</b> ${Array.isArray(q.答え)? q.答え.join(' → ') : q.答え}</div>`;
+
+    const hasExplain = !!q.解説 && String(q.解説).trim().length>0;
+    const hasLaw = !!(els.showLaw.checked && q.根拠 && q.根拠.法令ID);
+    if(hasExplain){
+      htmlExp += `<div style="margin-top:6px"><b>解説：</b> ${q.解説}</div>`;
+    } else if(!hasLaw) {
+      htmlExp += `<div class="muted" style="margin-top:6px">（解説は未登録）</div>`;
+    }
+
+    if(hasLaw){
       const law = LAWS.find(x=>x.法令ID===q.根拠.法令ID);
       if(law){
-        html += `<div style="margin-top:6px"><b>根拠条文：</b>【${law.名称}】${q.根拠.条文||''}<br><span class="muted">${(law.条文||'').slice(0,700)}</span></div>`;
+        const lawTitle = `【${law.名称}】${q.根拠.条文||''}`;
+        const lawBody = (law.条文||'').slice(0,700);
+        htmlExp += `<div style="margin-top:6px"><b>根拠条文：</b> ${lawTitle}<br><span class="muted">${lawBody}</span></div>`;
+      } else {
+        htmlExp += `<div class="muted" style="margin-top:6px">（根拠条文ID「${q.根拠.法令ID}」は見つかりませんでした）</div>`;
       }
     }
+
+    explain.innerHTML = htmlExp;
     els.qarea.scrollIntoView({behavior:'smooth', block:'start'});
 
     if(correct && els.autoNext.checked){
-      setTimeout(nextQuestion, 350);
+      setTimeout(nextQuestion, 450);
     }
   }
+
 
   function nextQuestion(){
     if(session.index < session.items.length-1){
