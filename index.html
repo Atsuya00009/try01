@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>昇任試験 学習アプリ｜例規・文書管理・地方自治法・地方公務員法</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#111827; --muted:#94a3b8; --text:#e5e7eb;
+    --accent:#22d3ee; --ok:#22c55e; --ng:#ef4444; --warn:#f59e0b;
+    --chip:#1f2937;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(180deg,#0b1220,#0f172a 30%,#0b1220);
+       color:var(--text);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  header{padding:16px 20px;border-bottom:1px solid #1f2937;position:sticky;top:0;background:#0f172a99;backdrop-filter: blur(6px)}
+  header h1{margin:0;font-size:18px;letter-spacing:.5px}
+  main{max-width:980px;margin:18px auto;padding:0 12px 80px}
+  .grid{display:grid;gap:12px}
+  @media(min-width:900px){.grid{grid-template-columns: 300px 1fr}}
+  .card{background:var(--panel);border:1px solid #1f2937;border-radius:12px;padding:14px}
+  .card h2{margin:2px 0 10px;font-size:15px;color:#cbd5e1}
+  label{display:block;margin:.25rem 0 .1rem;color:#cbd5e1;font-size:13px}
+  select,input[type="number"],input[type="text"],textarea{
+    width:100%;background:#0b1220;color:var(--text);border:1px solid #263245;border-radius:10px;
+    padding:10px 12px;outline:none
+  }
+  input[type="file"]{width:100%}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .row > *{flex:1}
+  button{
+    background:#0b1220;border:1px solid #2b3b4f;color:var(--text);padding:10px 14px;border-radius:10px;cursor:pointer
+  }
+  button.primary{background:var(--accent);color:#002b36;border:none;font-weight:700}
+  button.ghost{background:transparent;border:1px dashed #2b3b4f}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{background:var(--chip);border:1px solid #2b3b4f;border-radius:999px;padding:2px 10px;font-size:12px}
+  .muted{color:var(--muted);font-size:13px}
+  .stat{display:flex;gap:12px;flex-wrap:wrap}
+  .stat div{background:#0b1220;border:1px solid #1f2937;border-radius:10px;padding:8px 10px}
+  .qwrap{display:flex;gap:14px;flex-direction:column}
+  .qtitle{font-size:18px;font-weight:700;margin:0}
+  .options{display:flex;flex-direction:column;gap:8px}
+  .opt{border:1px solid #263245;border-radius:10px;padding:10px;cursor:pointer;background:#0b1220}
+  .opt input{margin-right:8px}
+  .opt.correct{border-color:var(--ok);background:#052e1b}
+  .opt.incorrect{border-color:var(--ng);background:#3a1217}
+  .answer-area{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .answer-area input[type="text"]{flex:1}
+  .result{padding:10px;border-radius:10px}
+  .ok{background:#052e1b;border:1px solid var(--ok)}
+  .ng{background:#3a1217;border:1px solid var(--ng)}
+  .explain{background:#0b1220;border:1px solid #263245;border-radius:10px;padding:10px}
+  .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;font-size:12px;background:#0b1220;border:1px solid #263245;border-radius:6px;padding:2px 6px}
+  .flex{display:flex;gap:10px;flex-wrap:wrap}
+  .space{height:8px}
+  footer{position:fixed;left:0;right:0;bottom:0;padding:10px 14px;background:#0b1220;border-top:1px solid #1f2937}
+  .right{margin-left:auto}
+  .warn{color:#fbbf24}
+</style>
+</head>
+<body>
+<header>
+  <h1>昇任試験 学習アプリ｜例規・文書管理・地方自治法・地方公務員法</h1>
+</header>
+
+<main class="grid">
+  <!-- 左ペイン：設定＆読み込み -->
+  <section class="card">
+    <h2>設定／データ</h2>
+
+    <label>モード</label>
+    <select id="mode">
+      <option value="past">過去問対策モード（年度順）</option>
+      <option value="random">ランダム対策モード（難易度揃え）</option>
+      <option value="mockHalf">ハーフ模擬（60分/各科目半分）</option>
+      <option value="wrong">誤答ノート（やり直し）</option>
+    </select>
+
+    <div class="row">
+      <div>
+        <label>科目</label>
+        <select id="subject">
+          <option value="">全部</option>
+          <option>例規</option>
+          <option>文書管理</option>
+          <option>地方自治法</option>
+          <option>地方公務員法</option>
+        </select>
+      </div>
+      <div>
+        <label>難易度（ランダム用）</label>
+        <select id="level">
+          <option value="">指定なし</option>
+          <option value="基礎">基礎</option>
+          <option value="標準">標準</option>
+          <option value="応用">応用</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>年度（過去問用）</label>
+        <input id="year" type="text" placeholder="例：令和5年度／R5／2023 など" />
+      </div>
+      <div>
+        <label>出題数</label>
+        <input id="count" type="number" min="1" max="300" value="20" />
+      </div>
+    </div>
+
+    <div class="row">
+      <button id="start" class="primary">開始</button>
+      <button id="stop" class="ghost">リセット</button>
+    </div>
+
+    <div class="space"></div>
+    <h2>データ読込</h2>
+    <label>問題データ（JSON）</label>
+    <input id="qfile" type="file" accept="application/json" />
+    <div class="row">
+      <button id="exportQ">問題を書き出し</button>
+      <button id="loadSample">サンプル問題を読み込む</button>
+    </div>
+
+    <div class="space"></div>
+    <label>条文データ（JSON）</label>
+    <input id="lfile" type="file" accept="application/json" />
+    <div class="row">
+      <button id="exportL">条文を書き出し</button>
+      <button id="loadLawSample">サンプル条文を読み込む</button>
+    </div>
+
+    <div class="space"></div>
+    <h2>オプション</h2>
+    <div class="row">
+      <label><input id="shuffleChoices" type="checkbox" checked> 選択肢を毎回シャッフル</label>
+    </div>
+    <div class="row">
+      <label><input id="showLaw" type="checkbox" checked> 根拠条文を表示</label>
+    </div>
+    <div class="row">
+      <label><input id="autoNext" type="checkbox"> 正解時に自動で次へ</label>
+    </div>
+    <div class="row">
+      <label><input id="timerOn" type="checkbox" checked> タイマーON</label>
+    </div>
+
+    <div class="space"></div>
+    <h2>進捗</h2>
+    <div class="stat" id="stat">
+      <div>問題数: <b id="s-total">0</b></div>
+      <div>現在: <b id="s-idx">0</b></div>
+      <div>正答: <b id="s-correct">0</b></div>
+      <div>誤答: <b id="s-wrong">0</b></div>
+      <div>正答率: <b id="s-rate">0%</b></div>
+      <div>時間: <b id="s-time">00:00</b> <span id="countdown" class="warn"></span></div>
+      <div>換算スコア: <b id="s-score">0 / 70</b></div>
+    </div>
+
+  </section>
+
+  <!-- 右ペイン：出題 -->
+  <section class="card">
+    <h2>出題</h2>
+    <div id="qarea" class="qwrap">
+      <p class="muted">左の「開始」を押すと出題が始まります。  
+      まずは「サンプル問題を読み込む」で動作確認してください。</p>
+    </div>
+  </section>
+</main>
+
+<footer class="flex">
+  <div class="chips" id="tags"></div>
+  <div class="right">
+    <span class="chip">ショートカット：<span class="kbd">Enter</span> 答え合わせ / <span class="kbd">N</span> 次へ</span>
+  </div>
+</footer>
+
+<script>
+/* ========== データ構造 ==========
+問題JSON（配列）
+{
+  "id": "R5-例規-01",
+  "科目": "例規",                // 例規 / 文書管理 / 地方自治法 / 地方公務員法
+  "年度": "令和5年度",           // 任意
+  "形式": "truefalse",           // truefalse / mcq / fill / order / short
+  "難易度": "標準",              // 基礎 / 標準 / 応用
+  "問題文": "静岡市の休日を定める条例がある。〇か×か？",
+  "選択肢": ["〇","×"],         // mcq/truefalse/order用
+  "答え": "〇",                 // fill/shortは文字列、mcq/truefalseは一致、orderは配列 ["手順1","手順2"...]
+  "解説": "静岡市休日条例…",
+  "根拠": {"法令ID":"Shizuoka-条例-休日","条文":"第1条"} // 任意
+}
+
+条文JSON（配列）
+[
+  {"法令ID":"Shizuoka-条例-休日","名称":"静岡市休日条例","条文":"第1条 …"},
+  {"法令ID":"LGL-232-2","名称":"地方自治法232条の2","条文":"…"}
+]
+================================= */
+
+const els = {
+  mode: document.getElementById('mode'),
+  subject: document.getElementById('subject'),
+  level: document.getElementById('level'),
+  year: document.getElementById('year'),
+  count: document.getElementById('count'),
+  start: document.getElementById('start'),
+  stop: document.getElementById('stop'),
+  qfile: document.getElementById('qfile'),
+  lfile: document.getElementById('lfile'),
+  exportQ: document.getElementById('exportQ'),
+  exportL: document.getElementById('exportL'),
+  loadSample: document.getElementById('loadSample'),
+  loadLawSample: document.getElementById('loadLawSample'),
+  shuffleChoices: document.getElementById('shuffleChoices'),
+  showLaw: document.getElementById('showLaw'),
+  autoNext: document.getElementById('autoNext'),
+  timerOn: document.getElementById('timerOn'),
+  qarea: document.getElementById('qarea'),
+  sTotal: document.getElementById('s-total'),
+  sIdx: document.getElementById('s-idx'),
+  sCorrect: document.getElementById('s-correct'),
+  sWrong: document.getElementById('s-wrong'),
+  sRate: document.getElementById('s-rate'),
+  sTime: document.getElementById('s-time'),
+  sScore: document.getElementById('s-score'),
+  countdown: document.getElementById('countdown'),
+  tags: document.getElementById('tags'),
+};
+
+let QUESTIONS = [];      // 全問題
+let LAWS = [];           // 条文DB
+let session = null;      // 現在の出題セッション
+let timer = null;        // タイマー
+
+// ローカル保存キー
+const KEY_Q = 'exam_questions_v1';
+const KEY_L = 'exam_laws_v1';
+const KEY_WRONG = 'exam_wrong_v1';
+
+// ユーティリティ
+const shuffle = arr => arr.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(v=>v[1]);
+const fmtMMSS = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+const download = (name, data) => {
+  const blob = new Blob([data], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),500);
+};
+
+function saveLocal(){
+  localStorage.setItem(KEY_Q, JSON.stringify(QUESTIONS));
+  localStorage.setItem(KEY_L, JSON.stringify(LAWS));
+}
+function loadLocal(){
+  try{
+    const q = localStorage.getItem(KEY_Q); if(q) QUESTIONS = JSON.parse(q);
+    const l = localStorage.getItem(KEY_L); if(l) LAWS = JSON.parse(l);
+  }catch(e){ console.warn(e) }
+}
+function saveWrongSet(wset){
+  localStorage.setItem(KEY_WRONG, JSON.stringify(wset || []));
+}
+function loadWrongSet(){
+  try{ return JSON.parse(localStorage.getItem(KEY_WRONG)||'[]'); }catch(e){ return [] }
+}
+
+// ====== 画面更新 ======
+function setStats(){
+  if(!session){ els.sTotal.textContent='0'; els.sIdx.textContent='0'; els.sCorrect.textContent='0'; els.sWrong.textContent='0'; els.sRate.textContent='0%'; els.sTime.textContent='00:00'; els.countdown.textContent=''; els.sScore.textContent='0 / 70'; return; }
+  els.sTotal.textContent = session.total;
+  els.sIdx.textContent = Math.min(session.index+1, session.total);
+  els.sCorrect.textContent = session.correct;
+  els.sWrong.textContent = session.wrong;
+  const answered = session.correct + session.wrong;
+  const rate = answered ? Math.round(100*session.correct/answered) : 0;
+  els.sRate.textContent = rate + '%';
+  // 時間
+  if(session.mode==='mockHalf'){
+    const left = Math.max(0, session.limit - session.elapsed);
+    els.sTime.textContent = fmtMMSS(session.elapsed);
+    els.countdown.textContent = ' / 残り ' + fmtMMSS(left);
+  }else{
+    els.sTime.textContent = fmtMMSS(session.elapsed);
+    els.countdown.textContent = '';
+  }
+  // 目安換算スコア（本番70点換算）
+  const est = Math.round(70 * (session.correct / session.total));
+  els.sScore.textContent = `${est} / 70`;
+}
+function setTags(){
+  els.tags.innerHTML='';
+  if(!session) return;
+  const chips = [];
+  if(session.mode) chips.push(`モード: ${session.mode}`);
+  if(session.subject) chips.push(`科目: ${session.subject||'全部'}`);
+  if(session.level) chips.push(`難易度: ${session.level}`);
+  if(session.year) chips.push(`年度: ${session.year}`);
+  if(session.total) chips.push(`出題数: ${session.total}`);
+  chips.forEach(t=>{
+    const s = document.createElement('span'); s.className='chip'; s.textContent=t; els.tags.appendChild(s);
+  })
+}
+
+// ====== 出題セット構築 ======
+function buildSet(){
+  const mode = els.mode.value;
+  const subject = els.subject.value;
+  const level = els.level.value;
+  const year = els.year.value.trim();
+  const cnt = parseInt(els.count.value||'20',10);
+
+  let base = [...QUESTIONS];
+  if(subject) base = base.filter(q=>q.科目===subject);
+  if(mode==='past' && year) base = base.filter(q=> (q.年度||'').includes(year));
+  if(mode==='random' && level) base = base.filter(q=>q.難易度===level);
+  if(mode==='wrong'){
+    const wrongIds = loadWrongSet();
+    base = base.filter(q=> wrongIds.includes(q.id));
+  }
+
+  if(mode==='mockHalf'){
+    return buildMockHalf(base);
+  }
+
+  if(mode==='random' || mode==='wrong'){
+    base = shuffle(base);
+  }else{
+    base.sort((a,b)=> String(a.年度).localeCompare(String(b.年度)) || String(a.科目).localeCompare(String(b.科目)) || String(a.id).localeCompare(String(b.id)));
+  }
+
+  const pick = base.slice(0, Math.min(cnt, base.length));
+  return { mode, subject, level, year, items: pick, limitSeconds: null };
+}
+
+function buildMockHalf(poolAll){
+  const want = { "例規":18, "文書管理":24, "地方自治法":18, "地方公務員法":18 };
+  let items=[];
+  for (const subj of Object.keys(want)){
+    const pool = poolAll.filter(q=>q.科目===subj);
+    const take = want[subj];
+    if(pool.length < take) console.warn(`科目「${subj}」の問題数が不足しています（必要:${take} 件 / 実在:${pool.length} 件）`);
+    items = items.concat(shuffle(pool).slice(0, Math.min(take, pool.length)));
+  }
+  items = shuffle(items);
+  return { mode:'mockHalf', subject:'', level:'', year:'', items, limitSeconds: 60*60 };
+}
+
+// ====== 問題レンダリング ======
+function renderQuestion(){
+  if(!session){ return; }
+  if(session.index >= session.items.length){ endSession(); return; }
+
+  const i = session.index;
+  const q = session.items[i];
+  els.qarea.innerHTML = '';
+  const title = document.createElement('div');
+  title.className='qtitle';
+  title.textContent = `Q${i+1}. ${q.問題文}`;
+  els.qarea.appendChild(title);
+
+  const meta = document.createElement('div');
+  meta.className='muted';
+  meta.textContent = `科目:${q.科目}／形式:${q.形式}${q.難易度? '／難易度:'+q.難易度:''}${q.年度?'／年度:'+q.年度:''}`;
+  els.qarea.appendChild(meta);
+
+  const box = document.createElement('div'); box.className='options';
+  let inputRefs = []; // 回答取得用
+
+  // 選択肢シャッフル
+  const choices = Array.isArray(q.選択肢) ? [...q.選択肢] : null;
+  if(choices && els.shuffleChoices.checked && (q.形式==='mcq' || q.形式==='truefalse' || q.形式==='order')){
+    q._renderChoices = shuffle(choices);
+  }else if(choices){
+    q._renderChoices = choices;
+  }
+
+  if(q.形式==='truefalse' || q.形式==='mcq'){
+    (q._renderChoices || []).forEach((c,idx)=>{
+      const o = document.createElement('label'); o.className='opt';
+      const r = document.createElement('input'); r.type='radio'; r.name='ans';
+      r.value=c;
+      const t = document.createElement('span'); t.textContent=c;
+      o.appendChild(r); o.appendChild(t);
+      box.appendChild(o);
+      inputRefs.push(r);
+      o.addEventListener('click',()=> r.checked=true);
+    });
+  }
+  if(q.形式==='fill' || q.形式==='short'){
+    const wrap = document.createElement('div'); wrap.className='answer-area';
+    const inp = document.createElement('input'); inp.type='text'; inp.placeholder='ここに解答（全角/半角/スペース注意）';
+    wrap.appendChild(inp);
+    box.appendChild(wrap);
+    inputRefs.push(inp);
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter') checkAnswer(); });
+  }
+  if(q.形式==='order'){
+    const list = document.createElement('div'); list.className='options';
+    (q._renderChoices || []).forEach(item=>{
+      const row = document.createElement('div'); row.className='opt'; row.draggable=false;
+      row.textContent=item;
+      const btns = document.createElement('div'); btns.style.float='right';
+      const up = document.createElement('button'); up.textContent='↑'; up.style.marginRight='6px';
+      const dn = document.createElement('button'); dn.textContent='↓';
+      up.addEventListener('click',()=>{ if(row.previousElementSibling) list.insertBefore(row,row.previousElementSibling) });
+      dn.addEventListener('click',()=>{ if(row.nextElementSibling) list.insertBefore(row.nextElementSibling,row) });
+      btns.appendChild(up); btns.appendChild(dn); row.appendChild(btns);
+      list.appendChild(row);
+    });
+    box.appendChild(list);
+    inputRefs.push(list);
+  }
+
+  els.qarea.appendChild(box);
+
+  const actions = document.createElement('div'); actions.className='row';
+  const btnCheck = document.createElement('button'); btnCheck.className='primary'; btnCheck.textContent='答え合わせ（Enter）';
+  const btnNext = document.createElement('button'); btnNext.textContent='次へ（N）';
+  actions.appendChild(btnCheck); actions.appendChild(btnNext);
+  els.qarea.appendChild(actions);
+
+  const result = document.createElement('div'); result.className='result'; result.style.display='none';
+  els.qarea.appendChild(result);
+
+  const explain = document.createElement('div'); explain.className='explain'; explain.style.display='none';
+  els.qarea.appendChild(explain);
+
+  btnCheck.addEventListener('click', checkAnswer);
+  btnNext.addEventListener('click', nextQuestion);
+  document.onkeydown = (e)=>{
+    if(e.key==='Enter') checkAnswer();
+    if(e.key.toLowerCase()==='n') nextQuestion();
+  };
+
+  function getUserAnswer(){
+    if(q.形式==='truefalse' || q.形式==='mcq'){
+      const sel = inputRefs.find(r=>r.checked);
+      return sel ? sel.value : null;
+    }
+    if(q.形式==='fill' || q.形式==='short'){
+      return (inputRefs[0].value || '').trim();
+    }
+    if(q.形式==='order'){
+      const items = Array.from(inputRefs[0].children).map(e=> e.childNodes[0].nodeValue.trim());
+      return items;
+    }
+  }
+
+  function norm(s){
+    return String(s||'').replace(/\s+/g,'').replace(/[‐－ー―]/g,'-')
+      .replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0)-0xFEE0)) // 全角英数を半角へ
+      .toLowerCase();
+  }
+
+  function checkAnswer(){
+    if(session.checked) return;
+    const ua = getUserAnswer();
+    if(ua==null || (Array.isArray(ua) && ua.length===0)){
+      alert('解答を入力してください'); return;
+    }
+    let correct=false;
+    if(q.形式==='order'){
+      correct = JSON.stringify(ua)===JSON.stringify(q.答え);
+    }else if(q.形式==='fill' || q.形式==='short'){
+      correct = norm(ua)===norm(q.答え);
+    }else{
+      correct = ua===q.答え;
+    }
+
+    // 見た目マーキング
+    if(q.形式==='truefalse' || q.形式==='mcq'){
+      Array.from(box.querySelectorAll('.opt')).forEach(lab=>{
+        const val = lab.querySelector('input').value;
+        if(val===q.答え) lab.classList.add('correct');
+        if(val===ua && ua!==q.答え) lab.classList.add('incorrect');
+      });
+    }
+
+    result.style.display='block';
+    result.className='result ' + (correct?'ok':'ng');
+    result.textContent = correct ? '正解！' : '不正解…';
+
+    // スコア更新
+    session.checked = true;
+    if(correct){ session.correct++; } else { session.wrong++; addWrong(q.id); }
+    setStats();
+
+    // 解説＋条文
+    explain.style.display='block';
+    let html = '';
+    if(!correct){
+      html += `<div><b>あなたの答え：</b> ${Array.isArray(ua)? ua.join(' → ') : (ua||'(未入力)')}</div>`;
+    }
+    html += `<div><b>正解：</b> ${Array.isArray(q.答え)? q.答え.join(' → ') : q.答え}</div>`;
+    if(q.解説){ html += `<div style="margin-top:6px"><b>解説：</b> ${q.解説}</div>`; }
+    if(els.showLaw.checked && q.根拠 && q.根拠.法令ID){
+      const law = LAWS.find(x=>x.法令ID===q.根拠.法令ID);
+      if(law){
+        html += `<div style="margin-top:6px"><b>根拠条文：</b>【${law.名称}】${q.根拠.条文||''}<br><span class="muted">${(law.条文||'').slice(0,700)}</span></div>`;
+      }
+    }
+    explain.innerHTML = html;
+
+    if(correct && els.autoNext.checked){
+      setTimeout(nextQuestion, 400);
+    }
+  }
+
+  function nextQuestion(){
+    if(!session.checked){ // 未採点で次へ→確認
+      if(!confirm('未採点です。次の問題へ進みますか？')) return;
+    }
+    if(session.index < session.items.length-1){
+      session.index++;
+      session.checked=false;
+      renderQuestion();
+      setStats();
+    }else{
+      session.finished = true;
+      endSession();
+    }
+  }
+}
+
+// ====== セッション制御 ======
+function startSession(){
+  const set = buildSet();
+  if(!set.items || !set.items.length){
+    alert('該当の問題がありません。科目/年度/難易度/出題数を見直してください。'); return;
+  }
+  session = {
+    mode: set.mode || els.mode.value,
+    subject: els.subject.value,
+    level: els.level.value,
+    year: els.year.value.trim(),
+    items: set.items,
+    index: 0,
+    correct:0,
+    wrong:0,
+    total: set.items.length,
+    checked:false,
+    startedAt: Date.now(),
+    finished:false,
+    limit: set.limitSeconds || null,
+    elapsed: 0
+  };
+  setTags();
+  setStats();
+  startTimer();
+  renderQuestion();
+}
+function endSession(){
+  stopTimer(false);
+  const el = document.createElement('div');
+  el.className='explain';
+  const rate = session.total? Math.round(100*session.correct/session.total):0;
+  const est = Math.round(70 * (session.correct / session.total));
+  el.innerHTML = `<h3>演習終了</h3>
+  <div>正答 ${session.correct}／${session.total}（正答率 ${rate}%）</div>
+  <div>本番配点換算：<b>${est} / 70</b></div>
+  <div>経過：${fmtMMSS(session.elapsed)}${session.mode==='mockHalf' ? `（残り ${fmtMMSS(Math.max(0, session.limit-session.elapsed))}）` : ''}</div>
+  <div class="row" style="margin-top:8px">
+    <button onclick="window.location.reload()">再読み込み</button>
+  </div>`;
+  els.qarea.innerHTML='';
+  els.qarea.appendChild(el);
+}
+function resetSession(){
+  session=null;
+  setStats(); setTags();
+  stopTimer(true);
+  els.qarea.innerHTML = '<p class="muted">左の「開始」を押すと出題が始まります。</p>';
+}
+
+// ====== タイマー ======
+function startTimer(){
+  stopTimer(true);
+  if(!els.timerOn.checked){ return; }
+  timer = {h: null};
+  timer.h = setInterval(()=>{
+    if(!session) return;
+    session.elapsed++;
+    // カウントダウン終了判定（ハーフ模擬）
+    if(session.mode==='mockHalf' && session.limit && session.elapsed>=session.limit){
+      session.elapsed = session.limit;
+      setStats();
+      session.finished = true;
+      clearInterval(timer.h);
+      timer.h = null;
+      const warn = document.createElement('div');
+      warn.className = 'explain';
+      warn.innerHTML = `<b>時間切れです。</b> 自動的に終了しました。`;
+      els.qarea.prepend(warn);
+      setTimeout(endSession, 500);
+      return;
+    }
+    setStats();
+  },1000);
+}
+function stopTimer(clearLabel){
+  if(timer && timer.h){ clearInterval(timer.h); }
+  if(clearLabel){ els.sTime.textContent='00:00'; els.countdown.textContent=''; }
+  timer=null;
+}
+
+// ====== 誤答ノート ======
+function addWrong(id){
+  const s = new Set(loadWrongSet());
+  s.add(id); saveWrongSet([...s]);
+}
+
+// ====== ファイルIO ======
+els.qfile.addEventListener('change', async e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const txt = await f.text();
+  try{
+    const data = JSON.parse(txt);
+    if(!Array.isArray(data)) throw new Error('問題JSONは配列である必要があります');
+    QUESTIONS = data;
+    saveLocal();
+    alert(`問題を ${QUESTIONS.length} 件 読み込みました。`);
+  }catch(err){ alert('読み込みエラー: '+err.message); }
+  e.target.value='';
+});
+els.lfile.addEventListener('change', async e=>{
+  const f = e.target.files[0]; if(!f) return;
+  const txt = await f.text();
+  try{
+    const data = JSON.parse(txt);
+    if(!Array.isArray(data)) throw new Error('条文JSONは配列である必要があります');
+    LAWS = data;
+    saveLocal();
+    alert(`条文を ${LAWS.length} 件 読み込みました。`);
+  }catch(err){ alert('読み込みエラー: '+err.message); }
+  e.target.value='';
+});
+els.exportQ.addEventListener('click', ()=> download('questions.json', JSON.stringify(QUESTIONS, null, 2)));
+els.exportL.addEventListener('click', ()=> download('laws.json', JSON.stringify(LAWS, null, 2)));
+
+// ====== サンプルデータ ======
+const SAMPLE_Q = [
+  {"id":"R5-例規-01","科目":"例規","年度":"令和5年度","形式":"truefalse","難易度":"基礎",
+   "問題文":"静岡市の休日を定める条例がある。〇か×か？",
+   "選択肢":["〇","×"],"答え":"〇","解説":"静岡市の休日を定める条例に基づく。","根拠":{"法令ID":"Shizuoka-休日","条文":"第1条"}},
+  {"id":"R4-自治-12","科目":"地方自治法","年度":"令和4年度","形式":"fill","難易度":"標準",
+   "問題文":"普通地方公共団体の出納期間は会計年度末から（　　　）までである。","答え":"5月31日",
+   "解説":"会計管理者が出納事務を行える期間。","根拠":{"法令ID":"LGL-出納期間","条文":"第235条の3"}},
+  {"id":"R4-文書-07","科目":"文書管理","年度":"令和4年度","形式":"mcq","難易度":"基礎",
+   "問題文":"公文書の定義に含まれるものはどれか。","選択肢":["職務外に作成した私的メモ","職務上取得した写真（電磁的記録含む）","上司の口頭指示の伝聞"],
+   "答え":"職務上取得した写真（電磁的記録含む）","解説":"職務上作成・取得し、組織的に用いるものを保有するものが公文書。","根拠":{"法令ID":"SZK-公文書管理","条文":"定義"}},
+  {"id":"R3-例規-11","科目":"例規","年度":"令和3年度","形式":"order","難易度":"標準",
+   "問題文":"条例制定改廃事務の正しい順に並べよ。","選択肢":["公布","議会提案・議決","市長決裁","所管課検討・案作成","庁内手続（政策法務等）","施行"],
+   "答え":["所管課検討・案作成","庁内手続（政策法務等）","市長決裁","議会提案・議決","公布","施行"],
+   "解説":"流れをストーリーで暗記するとミスが減る。"},
+  {"id":"R5-公務-02","科目":"地方公務員法","年度":"令和5年度","形式":"short","難易度":"基礎",
+   "問題文":"懲戒処分を4つ挙げよ。","答え":"戒告、減給、停職、免職","解説":"順番不問。読点区切りで入力。","根拠":{"法令ID":"LPL-懲戒","条文":"懲戒の種類"}}
+];
+const SAMPLE_LAWS = [
+  {"法令ID":"Shizuoka-休日","名称":"静岡市休日条例","条文":"第1条（趣旨） 市の休日について定める。…"},
+  {"法令ID":"LGL-出納期間","名称":"地方自治法（出納期間）","条文":"第235条の3 普通地方公共団体の出納期間は、翌年度の5月31日までとする。"},
+  {"法令ID":"SZK-公文書管理","名称":"静岡市公文書管理規則","条文":"（定義） 実施機関の職員が職務上作成・取得した文書、図画、写真及び電磁的記録で、組織的に用いるものとして保有しているものをいう。"},
+  {"法令ID":"LPL-懲戒","名称":"地方公務員法（懲戒）","条文":"懲戒は戒告、減給、停職及び免職とする。…"}
+];
+
+els.loadSample.addEventListener('click', ()=>{
+  QUESTIONS = SAMPLE_Q; saveLocal();
+  alert('サンプル問題を読み込みました（5問）');
+});
+els.loadLawSample.addEventListener('click', ()=>{
+  LAWS = SAMPLE_LAWS; saveLocal();
+  alert('サンプル条文を読み込みました（4件）');
+});
+
+// ====== イベント ======
+els.start.addEventListener('click', startSession);
+els.stop.addEventListener('click', resetSession);
+
+// 初期化
+loadLocal();
+(function initMessage(){
+  if(!QUESTIONS.length){
+    // 初回ガイダンス
+    console.log('問題データを読み込むか、サンプルをロードしてください。');
+  }
+})();
+</script>
+</body>
+</html>
