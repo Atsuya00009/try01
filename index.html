@@ -591,7 +591,6 @@ stop.addEventListener('click', resetSession);
    ※ 既に localStorage に問題があればスキップ（起動高速化）
 ----------------------------------------------------------------- */
 (async function autoLoadHostedData(){
-  if (localStorage.getItem('exam_questions_v1')) return;
   try {
     const q = await fetch('./data/questions.json', {cache:'no-store'});
     if (q.ok) {
