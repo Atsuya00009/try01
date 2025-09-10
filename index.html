@@ -32,8 +32,8 @@
   }
   button.primary{background:var(--accent);color:#002b36;border:none;font-weight:700}
   button.ghost{background:transparent;border:1px dashed #2b3b4f}
-  .chips{display:flex;gap:8px;flex-wrap:wrap}
-  .chip{background:var(--chip);border:1px solid #2b3b4f;border-radius:999px;padding:2px 10px;font-size:12px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .chip{background:var(--chip);border:1px solid #2b3b4f;border-radius:999px;padding:2px 10px;font-size:12px;white-space:nowrap}
   .muted{color:var(--muted);font-size:13px}
   .stat{display:flex;gap:12px;flex-wrap:wrap}
   .stat div{background:#0b1220;border:1px solid #1f2937;border-radius:10px;padding:8px 10px}
@@ -56,6 +56,7 @@
   footer{position:fixed;left:0;right:0;bottom:0;padding:10px 14px;background:#0b1220;border-top:1px solid #1f2937}
   .right{margin-left:auto}
   .warn{color:#fbbf24}
+  a.link{color:#7dd3fc;text-decoration:none}
 </style>
 </head>
 <body>
@@ -114,7 +115,7 @@
     </div>
 
     <div class="row">
-      <button id="start" class="primary">開始</button>
+      <button id="start" class="primary" disabled>開始</button>
       <button id="stop" class="ghost">リセット</button>
     </div>
 
@@ -125,6 +126,7 @@
     <div class="row">
       <button id="exportQ">問題を書き出し</button>
       <button id="loadSample">サンプル問題を読み込む</button>
+      <button id="reloadHosted">Hostedを再取得</button>
     </div>
 
     <div class="space"></div>
@@ -168,25 +170,30 @@
   <section class="card">
     <h2>出題</h2>
     <div id="qarea" class="qwrap">
-      <p class="muted">左の「開始」を押すと出題が始まります。<br>
-      まずは「サンプル問題を読み込む」で動作確認してください。</p>
+      <p class="muted">左の「開始」が有効になるまでお待ちください。<br>
+      Hosted（GitHub Pages）の questions.json を取得し次第、ここに出題が表示されます。</p>
     </div>
   </section>
 </main>
 
 <footer class="flex">
   <div class="chips" id="tags"></div>
-  <div class="right">
+  <div class="right chips">
+    <span class="chip" id="chipEnv">Env: -</span>
+    <span class="chip" id="chipSrc">Data: -</span>
+    <span class="chip" id="chipCounts">Q: 0 | Laws: 0</span>
+    <a class="chip link" id="chipLink" href="#" target="_blank" rel="noopener">Hosted URL</a>
+    <span class="chip" id="chipTime">--:--:--</span>
     <span class="chip">ショートカット：<span class="kbd">Enter</span> 判定 / <span class="kbd">N</span> 次へ</span>
   </div>
 </footer>
 
 <script>
-/* ========== 参照 ========== */
+/* ========== 参照と状態 ========== */
 const els = {
   mode: mode, subject: subject, level: level, year: year, count: count,
   start: start, stop: stop, qfile: qfile, lfile: lfile,
-  exportQ: exportQ, exportL: exportL, loadSample: loadSample, loadLawSample: loadLawSample,
+  exportQ: exportQ, exportL: exportL, loadSample: loadSample, loadLawSample: loadLawSample, reloadHosted: reloadHosted,
   shuffleChoices: shuffleChoices, showLaw: showLaw, autoNext: autoNext, timerOn: timerOn, instant: instant,
   qarea: document.getElementById('qarea'),
   sTotal: document.getElementById('s-total'), sIdx: document.getElementById('s-idx'),
@@ -194,6 +201,11 @@ const els = {
   sRate: document.getElementById('s-rate'), sTime: document.getElementById('s-time'),
   sScore: document.getElementById('s-score'), countdown: document.getElementById('countdown'),
   tags: document.getElementById('tags'),
+  chipEnv: document.getElementById('chipEnv'),
+  chipSrc: document.getElementById('chipSrc'),
+  chipCounts: document.getElementById('chipCounts'),
+  chipLink: document.getElementById('chipLink'),
+  chipTime: document.getElementById('chipTime'),
 };
 
 let QUESTIONS = [];
@@ -205,27 +217,31 @@ const KEY_Q = 'exam_questions_v1';
 const KEY_L = 'exam_laws_v1';
 const KEY_WRONG = 'exam_wrong_v1';
 
+const HOSTED_Q_URL = './data/questions.json';
+const HOSTED_L_URL = './data/laws.json';
+
 const shuffle = arr => arr.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(v=>v[1]);
 const fmtMMSS = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+const nowTime = ()=>{ const d=new Date(); return [d.getHours(),d.getMinutes(),d.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':'); };
 const download = (name, data) => {
   const blob = new Blob([data], {type:'application/json'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),500);
 };
-
-function saveLocal(){
-  localStorage.setItem(KEY_Q, JSON.stringify(QUESTIONS));
-  localStorage.setItem(KEY_L, JSON.stringify(LAWS));
+function setDataSourceChip(source){
+  els.chipSrc.textContent = `Data: ${source}`;
+  els.chipCounts.textContent = `Q: ${QUESTIONS?.length||0} | Laws: ${LAWS?.length||0}`;
+  els.chipTime.textContent = nowTime();
 }
-function loadLocal(){
-  try{
-    const q = localStorage.getItem(KEY_Q); if(q) QUESTIONS = JSON.parse(q);
-    const l = localStorage.getItem(KEY_L); if(l) LAWS = JSON.parse(l);
-  }catch(e){ console.warn(e) }
+function setEnvChip(){
+  const isPages = location.hostname.endsWith('.github.io');
+  els.chipEnv.textContent = `Env: ${isPages? 'GitHub Pages' : (location.protocol==='file:'?'Local file':'Local http')}`;
+  const link = new URL(HOSTED_Q_URL, location.href).href;
+  els.chipLink.href = link;
+  els.chipLink.textContent = 'Hosted Q';
 }
-function saveWrongSet(wset){ localStorage.setItem(KEY_WRONG, JSON.stringify(wset || [])); }
-function loadWrongSet(){ try{ return JSON.parse(localStorage.getItem(KEY_WRONG)||'[]'); }catch(e){ return [] } }
 
+/* ========== ステータス表示 ========== */
 function setStats(){
   if(!session){ els.sTotal.textContent='0'; els.sIdx.textContent='0'; els.sCorrect.textContent='0'; els.sWrong.textContent='0'; els.sRate.textContent='0%'; els.sTime.textContent='00:00'; els.countdown.textContent=''; els.sScore.textContent='0 / 70'; return; }
   els.sTotal.textContent = session.total;
@@ -258,6 +274,7 @@ function setTags(){
   chips.forEach(t=>{ const s = document.createElement('span'); s.className='chip'; s.textContent=t; els.tags.appendChild(s); })
 }
 
+/* ========== データセット生成 ========== */
 function buildSet(){
   const mode = els.mode.value;
   const subject = els.subject.value;
@@ -294,6 +311,7 @@ function buildMockHalf(poolAll){
   return { mode:'mockHalf', subject:'', level:'', year:'', items, limitSeconds: 60*60 };
 }
 
+/* ========== 出題レンダリング（即時判定対応） ========== */
 function renderQuestion(){
   if(!session){ return; }
   if(session.index >= session.items.length){ endSession(); return; }
@@ -465,10 +483,11 @@ function renderQuestion(){
   }
 }
 
+/* ========== セッション制御 ========== */
 function startSession(){
   const set = buildSet();
   if(!set.items || !set.items.length){
-    alert('該当の問題がありません。科目/年度/難易度/出題数を見直してください。'); return;
+    alert('該当の問題がありません。科目/年度/難易度/出題数を見直すか、データソースを確認してください。'); return;
   }
   session = {
     mode: set.mode || els.mode.value,
@@ -499,7 +518,7 @@ function endSession(){
 }
 function resetSession(){
   session=null; setStats(); setTags(); stopTimer(true);
-  els.qarea.innerHTML = '<p class="muted">左の「開始」を押すと出題が始まります。</p>';
+  els.qarea.innerHTML = '<p class="muted">左の「開始」が有効になるまでお待ちください。</p>';
 }
 
 function startTimer(){
@@ -528,18 +547,30 @@ function stopTimer(clearLabel){
   timer=null;
 }
 
-function addWrong(id){
-  const s = new Set(loadWrongSet()); s.add(id); saveWrongSet([...s]);
+function saveLocal(){
+  localStorage.setItem(KEY_Q, JSON.stringify(QUESTIONS));
+  localStorage.setItem(KEY_L, JSON.stringify(LAWS));
 }
+function loadLocal(){
+  try{
+    const q = localStorage.getItem(KEY_Q); if(q) QUESTIONS = JSON.parse(q);
+    const l = localStorage.getItem(KEY_L); if(l) LAWS = JSON.parse(l);
+  }catch(e){ console.warn(e) }
+}
+function saveWrongSet(wset){ localStorage.setItem(KEY_WRONG, JSON.stringify(wset || [])); }
+function loadWrongSet(){ try{ return JSON.parse(localStorage.getItem(KEY_WRONG)||'[]'); }catch(e){ return [] } }
+function addWrong(id){ const s = new Set(loadWrongSet()); s.add(id); saveWrongSet([...s]); }
 
-/* ---- ファイルIO ---- */
+/* ========== ファイルIO/サンプル/Hosted再取得 ========== */
 qfile.addEventListener('change', async e=>{
   const f = e.target.files[0]; if(!f) return;
   const txt = await f.text();
   try{
     const data = JSON.parse(txt);
     if(!Array.isArray(data)) throw new Error('問題JSONは配列である必要があります');
-    QUESTIONS = data; saveLocal(); alert(`問題を ${QUESTIONS.length} 件 読み込みました。`);
+    QUESTIONS = data; saveLocal(); setDataSourceChip('File Upload');
+    els.start.disabled = QUESTIONS.length === 0;
+    alert(`問題を ${QUESTIONS.length} 件 読み込みました。`);
   }catch(err){ alert('読み込みエラー: '+err.message); }
   e.target.value='';
 });
@@ -549,14 +580,14 @@ lfile.addEventListener('change', async e=>{
   try{
     const data = JSON.parse(txt);
     if(!Array.isArray(data)) throw new Error('条文JSONは配列である必要があります');
-    LAWS = data; saveLocal(); alert(`条文を ${LAWS.length} 件 読み込みました。`);
+    LAWS = data; saveLocal(); setDataSourceChip(els.chipSrc.textContent.replace('Data: ','') || 'File Upload');
+    alert(`条文を ${LAWS.length} 件 読み込みました。`);
   }catch(err){ alert('読み込みエラー: '+err.message); }
   e.target.value='';
 });
 exportQ.addEventListener('click', ()=> download('questions.json', JSON.stringify(QUESTIONS, null, 2)));
 exportL.addEventListener('click', ()=> download('laws.json', JSON.stringify(LAWS, null, 2)));
 
-/* ---- サンプル（動作確認用） ---- */
 const SAMPLE_Q = [
   {"id":"R5-例規-01","科目":"例規","年度":"令和5年度","形式":"truefalse","難易度":"基礎",
    "問題文":"静岡市の休日を定める条例がある。〇か×か？",
@@ -581,39 +612,77 @@ const SAMPLE_LAWS = [
   {"法令ID":"LPL-懲戒","名称":"地方公務員法（懲戒）","条文":"懲戒は戒告、減給、停職及び免職とする。…"}
 ];
 
-loadSample.addEventListener('click', ()=>{ QUESTIONS = SAMPLE_Q; saveLocal(); alert('サンプル問題を読み込みました（5問）'); });
-loadLawSample.addEventListener('click', ()=>{ LAWS = SAMPLE_LAWS; saveLocal(); alert('サンプル条文を読み込みました（4件）'); });
+loadSample.addEventListener('click', ()=>{
+  QUESTIONS = SAMPLE_Q; saveLocal(); setDataSourceChip('Sample'); els.start.disabled = QUESTIONS.length===0;
+  alert('サンプル問題を読み込みました（5問）');
+});
+loadLawSample.addEventListener('click', ()=>{
+  LAWS = SAMPLE_LAWS; saveLocal(); setDataSourceChip(els.chipSrc.textContent.replace('Data: ','') || 'Sample');
+  alert('サンプル条文を読み込みました（4件）');
+});
 
-start.addEventListener('click', startSession);
-stop.addEventListener('click', resetSession);
+reloadHosted.addEventListener('click', fetchHosted);
 
-/* ---- ここから、ホストされた data/*.json を初回自動読込（GitHub Pages 常置） ----
-   ※ 既に localStorage に問題があればスキップ（起動高速化）
------------------------------------------------------------------ */
-(async function autoLoadHostedData(){
-  try {
-    const q = await fetch('./data/questions.json', {cache:'no-store'});
-    if (q.ok) {
-      const questions = await q.json();
-      window.QUESTIONS = questions;
-      localStorage.setItem('exam_questions_v1', JSON.stringify(questions));
-      console.log('Hosted questions.json loaded:', questions.length);
+/* ========== 起動順序：Local → Hosted上書き ========== */
+(function loadLocalFirst(){
+  try{
+    const q = localStorage.getItem(KEY_Q);
+    const l = localStorage.getItem(KEY_L);
+    if (q) QUESTIONS = JSON.parse(q);
+    if (l) LAWS = JSON.parse(l);
+    if (Array.isArray(QUESTIONS) && QUESTIONS.length > 0){
+      setDataSourceChip('LocalStorage (fallback)');
+      els.start.disabled = false;
+      console.log('[localStorage] questions loaded:', QUESTIONS.length);
     }
-  } catch(e){ console.warn(e); }
-
-  try {
-    const l = await fetch('./data/laws.json', {cache:'no-store'});
-    if (l.ok) {
-      const laws = await l.json();
-      window.LAWS = laws;
-      localStorage.setItem('exam_laws_v1', JSON.stringify(laws));
-      console.log('Hosted laws.json loaded:', laws.length);
-    }
-  } catch(e){ console.warn(e); }
+  }catch(e){ console.warn('[localStorage] parse error', e); }
 })();
 
-// 初期化（localStorage既存なら反映）
-loadLocal();
+async function fetchHosted(){
+  try {
+    const qres = await fetch(HOSTED_Q_URL, { cache: 'no-store' });
+    if (!qres.ok) throw new Error('questions.json HTTP ' + qres.status);
+    const questions = await qres.json();
+    if (!Array.isArray(questions) || questions.length === 0) {
+      throw new Error('questions.json is empty or not an array');
+    }
+    window.QUESTIONS = questions;
+    localStorage.setItem(KEY_Q, JSON.stringify(questions));
+    setDataSourceChip('Hosted');
+    els.start.disabled = false;
+    console.log('[fetch] questions.json loaded:', questions.length);
+  } catch (e) {
+    console.error('[fetch] questions.json failed:', e);
+    // Hosted失敗でもローカルがあれば学習は続行できる
+    if (!Array.isArray(QUESTIONS) || QUESTIONS.length === 0){
+      alert('Hostedのquestions.json取得に失敗。LocalStorageも空です。データを読み込んでください。');
+    } else {
+      alert('Hostedのquestions.json取得に失敗。LocalStorageのデータで継続します。');
+    }
+  }
+
+  try {
+    const lres = await fetch(HOSTED_L_URL, { cache: 'no-store' });
+    if (!lres.ok) throw new Error('laws.json HTTP ' + lres.status);
+    const laws = await lres.json();
+    if (!Array.isArray(laws)) throw new Error('laws.json is not an array');
+    window.LAWS = laws;
+    localStorage.setItem(KEY_L, JSON.stringify(laws));
+    // chipは「Hosted」のまま（lawsだけ失敗しても問題は解ける）
+    console.log('[fetch] laws.json loaded:', laws.length);
+    setDataSourceChip('Hosted');
+  } catch (e) {
+    console.warn('[fetch] laws.json failed (続行します):', e);
+  }
+}
+
+// 実行
+setEnvChip();
+fetchHosted();
+
+/* ========== UIイベント ========== */
+start.addEventListener('click', startSession);
+stop.addEventListener('click', resetSession);
 </script>
 </body>
 </html>
